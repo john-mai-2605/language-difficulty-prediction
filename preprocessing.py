@@ -7,8 +7,9 @@ import sklearn
 import pickle
 
 # Load vocab
-file = open('vocab', 'rb')
-vocab = pickle.load(file)
+# file = open('vocab', 'rb')
+# vocab = pickle.load(file)
+
 pron_dict = cmudict.dict()
 
 # The class for Word
@@ -64,7 +65,8 @@ class Text:
 		self.phonetic_density = np.asarray([word.phonetic_density() for word in self.words])
 		self.pron_ambiguity = np.asarray([self.distance(word) for word in self.words])
 	def distance(self, word):
-		return np.min([1 if word.token == another_word.token else textdistance.levenshtein.normalized_similarity(word.token, another_word.token) for another_word in self.words])
+		return np.max([0 if word.token == another_word.token else textdistance.levenshtein.normalized_similarity(word.token, another_word.token) for another_word in self.words])
+
 	def extract_features(self):
 		features = [len(self.words)]
 		for prop in [self.length, self.frequency, self.orthogonal_depth, self.phonetic_density, self.pron_ambiguity]:
@@ -84,6 +86,7 @@ class Preprocess:
 	def __init__(self, path):
 		self.data = pd.read_csv(path)
 		self.X = np.asarray([Text(text) for text in self.data['text']])
+
 	def transform(self):
 		features = [Text(text).extract_features() for text in self.data['text']]
 		self.data[[
@@ -94,6 +97,9 @@ class Preprocess:
 			'aveDensity', 'minDensity', 'maxDensity',
 			'aveAmbiguity', 'minAmbiguity', 'maxAmbiguity'
 			]] = features
+
+		self.data['speed'] = np.divide(self.data['length'], self.data['elapse_time'])
+
 		self.data.to_csv('../processed_data.csv')
 
 data = Preprocess('../clean_data.csv')
