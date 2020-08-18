@@ -5,11 +5,11 @@ import cmudict
 import textdistance
 import sklearn 
 import pickle
-
+import nltk
 # Load vocab
 # file = open('vocab', 'rb')
 # vocab = pickle.load(file)
-
+unigrams_df = pd.read_csv('unigram_freq.csv', index_col = 'word')
 pron_dict = cmudict.dict()
 
 # The class for Word
@@ -25,7 +25,7 @@ class Word:
 
 	def frequency(self):
 		try:
-			return vocab[self.token]['freq']
+			return np.log(unigrams_df.loc[self.token]['count'])
 		except:
 			return 0
 	def orthogonal_depth(self):
@@ -47,7 +47,7 @@ class Word:
 
 # Test basic features
 
-# word = Word("aerie, ")
+# word = Word("this, ")
 # print(word.length())
 # print(word.frequency())
 # print(word.orthogonal_depth())
@@ -59,6 +59,21 @@ class Text:
 	def __init__(self, text):
 		self.text = text
 		self.words = [Word(token) for token in text.strip().split(' ')]
+		self.tokens = [Word(token).token for token in text.strip().split(' ')]
+		self.pos_tags = [tag[:2] for (word, tag) in nltk.pos_tag(nltk.word_tokenize(text))]
+		self.noun = 0
+		self.verb = 0
+		self.adj = 0
+		self.adv = 0
+		for pos in self.pos_tags:
+			if pos == 'NN':
+				self.noun += 1
+			if pos == 'VB':
+				self.verb += 1
+			if pos == 'JJ':
+				self.adj += 1
+			if pos == 'RB':
+				self.adv += 1
 		self.length = np.asarray([word.length() for word in self.words])
 		self.frequency = np.asarray([word.frequency() for word in self.words])
 		self.orthogonal_depth = np.asarray([word.orthogonal_depth() for word in self.words])
@@ -68,7 +83,11 @@ class Text:
 		return np.max([0 if word.token == another_word.token else textdistance.levenshtein.normalized_similarity(word.token, another_word.token) for another_word in self.words])
 
 	def extract_features(self):
-		features = [len(self.words)]
+		features = [len(self.words), 
+			self.noun/len(self.words), 
+			self.verb/len(self.words), 
+			self.adj/len(self.words), 
+			self.adv/len(self.words)]
 		for prop in [self.length, self.frequency, self.orthogonal_depth, self.phonetic_density, self.pron_ambiguity]:
 			features.append(np.average(prop))
 			features.append(np.max(prop))
@@ -90,7 +109,7 @@ class Preprocess:
 	def transform(self):
 		features = [Text(text).extract_features() for text in self.data['text']]
 		self.data[[
-			'length',
+			'length', 'noun', 'verb', 'adj', 'adv',
 			'aveLength', 'maxLength', 'minLength', 
 			'aveFreq', 'maxFreq', 'minFreq', 
 			'aveDepth', 'maxDepth', 'minDepth', 
@@ -102,7 +121,7 @@ class Preprocess:
 
 		self.data.to_csv('../processed_data.csv')
 
-data = Preprocess('../clean_data.csv')
+data = Preprocess('../big_data.csv')
 data.transform()
 print("Finish pre-processing data")
 
