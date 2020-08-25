@@ -153,9 +153,20 @@ fit_param = {
     'verbose' : False}
 BT = xgb.XGBClassifier(**param)
 
-RF = ensemble.RandomForestClassifier(random_state=42)
-estimators = [('dt', DT), ('bt', BT), ('lgb', LGB), ('rf', RF), ('gb', GBoost)]
-final_estimator = LogisticRegression(multi_class = "ovr", random_state = 13)
-clf = StackingClassifier(estimators=estimators, final_estimator=final_estimator, n_jobs = -1)
-stack = Classifier(clf)
-y_pred = stack.run(X_train, y_train_clf, X_test, y_test_clf)
+# Stacking
+estimators = [('bt', BT.reg), ('lgb', lg.reg), ('gb', gb.reg)]
+reg = ensemble.StackingRegressor(estimators=estimators, final_estimator=rf.reg, n_jobs = -1, passthrough = True)
+stack = Regressor(reg)
+y = stack.run(X_train, y_train, X_test, y_test)
+# with open ('y_pred_regs.pkl', 'rb') as f:
+# 	y_preds = pickle.load(f)
+with open ('regs.pkl', 'rb') as f:
+	regs = pickle.load(f)
+
+y_preds.append(y)
+regs.append(y)
+val = input("Enter to save, Ctrl+C to stop") 
+# with open ('y_pred_regs.pkl', 'wb') as f:
+# 	pickle.dump(y_preds, f)
+with open ('regs.pkl', 'wb') as f:
+	pickle.dump(regs, f)
